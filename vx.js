@@ -19,10 +19,14 @@ function streamingMicRecognize(opts) {
     },
     interimResults: true
   }
-  var expireTime = Date.now() + 59000
+
+  let expireTime
   function updateSpinner() {
-    var timeLeft = Math.ceil((expireTime - Date.now()) / 1000)
-    spinner.text = '[' + timeLeft + 's] ' + (listenedText || '(waiting...)')
+    if (expireTime) {
+      var timeLeft = Math.ceil((expireTime - Date.now()) / 1000)
+      spinner.text =
+        '[' + timeLeft + 's] ' + (listenedText || '(Waiting for your voice...)')
+    }
   }
 
   var listenedText = ''
@@ -55,6 +59,14 @@ function streamingMicRecognize(opts) {
       recordProgram: 'rec',
       silence: '10.0'
     })
+    .on('data', () => {
+      if (!expireTime) {
+        expireTime = Date.now() + 59000
+        setTimeout(() => {
+          record.stop()
+        }, expireTime - Date.now())
+      }
+    })
     .on('error', console.error)
     .pipe(
       recognizeStream,
@@ -65,11 +77,7 @@ function streamingMicRecognize(opts) {
       process.exit(0)
     })
 
-  spinner.text = 'Listening, press Ctrl+C to stop'
   setInterval(updateSpinner, 1000)
-  setTimeout(() => {
-    record.stop()
-  }, expireTime - Date.now())
 }
 
 require(`yargs`)
